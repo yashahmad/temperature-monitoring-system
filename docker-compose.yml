@@ -1,0 +1,60 @@
+services:
+  web:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    environment:
+      - HOST=0.0.0.0
+    networks:
+      - temp-monitor-network
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - FRONTEND_URL=http://localhost:5173
+      - N8N_WEBHOOK=http://n8n:5678/webhook
+      - MONGODB_URI=mongodb://mongo:27017/tempdb
+    depends_on:
+      - mongo
+      - n8n
+    networks:
+      - temp-monitor-network
+
+  mongo:
+    image: mongo:latest
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=tempdb
+    ports:
+      - "27017:27017"
+    networks:
+      - temp-monitor-network
+  
+  n8n:
+    image: n8nio/n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_DATABASE_TYPE=sqlite
+      - N8N_DATABASE_SQLITE_VOLUME_LOCATION=/home/node/.n8n/database.sqlite
+      - N8N_USER_MANAGEMENT=0
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - NODE_ENV=production
+    volumes:
+      - ./n8n/data:/home/node/.n8n/
+    networks:
+      - temp-monitor-network
+
+volumes:
+  mongo-data:
+
+networks:
+  temp-monitor-network:
+    driver: bridge
